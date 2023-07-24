@@ -1,5 +1,5 @@
 const { join } = require('path');
-const { existsSync, renameSync, chmodSync } = require('fs');
+const { existsSync, renameSync, chmodSync, createReadStream, createWriteStream } = require('fs');
 const { getInstallationPath } = require('../common');
 const { pipeline } = require('stream');
 
@@ -49,8 +49,8 @@ function move(oldPath, newPath, callback) {
 }
 
 function copy(oldPath, newPath, callback) {
-  const readStream = fs.createReadStream(oldPath);
-  const writeStream = fs.createWriteStream(newPath);
+  const readStream = createReadStream(oldPath);
+  const writeStream = createWriteStream(newPath);
 
   const cb = function (err) {
     err
