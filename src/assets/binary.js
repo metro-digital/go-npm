@@ -1,6 +1,7 @@
 const { join } = require('path');
 const { existsSync, renameSync, chmodSync } = require('fs');
 const { getInstallationPath } = require('../common');
+const { pipeline } = require('stream');
 
 function verifyAndPlaceBinary(binName, binPath, callback) {
   if (!existsSync(join(binPath, binName))) {
@@ -8,18 +9,65 @@ function verifyAndPlaceBinary(binName, binPath, callback) {
   }
 
   getInstallationPath((err, installationPath) => {
+    if (err) {
+      return callback(err);
+    }
+
+    // Move the binary file and make sure it is executable
+    move(join(binPath, binName), join(installationPath, binName), (err) => {
       if (err) {
-        return callback(err);
+        return callback(err)
       }
 
-      // Move the binary file and make sure it is executable
-      renameSync(join(binPath, binName), join(installationPath, binName));
-      chmodSync(join(installationPath, binName), '755');
+      try {
+        chmodSync(join(installationPath, binName), '755');
+  
+        console.log('Placed binary on', join(installationPath, binName));
+        return callback(null);
+      } catch (err) {
+        return callback(err)
+      }
 
-      console.log('Placed binary on', join(installationPath, binName));
-
-      callback(null);
+    });
   });
 }
 
+function move(oldPath, newPath, callback) {
+  try { 
+    renameSync(oldPath, newPath)
+    callback(null)
+  } catch (err) {
+    if (err) {
+      if (err.code === 'EXDEV') {
+        copy(oldPath, newPath, callback);
+      } else {
+        callback(err);
+      }
+      return
+    }
+  };
+}
+
+function copy(oldPath, newPath, callback) {
+  const readStream = fs.createReadStream(oldPath);
+  const writeStream = fs.createWriteStream(newPath);
+
+  const cb = function (err) {
+    err
+      ? callback(err)
+      : callback(null)
+  }
+  readStream.on('error', cb);
+  writeStream.on('error', cb);
+
+  readStream.on('close', function () {
+    fs.unlink(oldPath, cb);
+  });
+
+  pipeline(
+    readStream,
+    writeStream,
+    cb
+  )
+}
 module.exports = verifyAndPlaceBinary;
