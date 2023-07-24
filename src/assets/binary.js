@@ -1,5 +1,5 @@
 const { join } = require('path');
-const { existsSync, renameSync, chmodSync, createReadStream, createWriteStream } = require('fs');
+const { existsSync, renameSync, chmodSync, createReadStream, createWriteStream, unlink } = require('fs');
 const { getInstallationPath } = require('../common');
 const { pipeline } = require('stream');
 
@@ -61,7 +61,7 @@ function copy(oldPath, newPath, callback) {
   writeStream.on('error', cb);
 
   readStream.on('close', function () {
-    fs.unlink(oldPath, cb);
+    unlink(oldPath, cb);
   });
 
   pipeline(
